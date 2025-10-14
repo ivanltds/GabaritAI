@@ -1,7 +1,16 @@
+using GabaritAI.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
+
+builder.Services.AddSingleton<IOpenAIService>(sp =>
+{
+    var httpClient = new HttpClient();
+    var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? "COLE_SUA_API_KEY_AQUI";
+    return new OpenAIService(httpClient, apiKey);
+});
 
 var app = builder.Build();
 

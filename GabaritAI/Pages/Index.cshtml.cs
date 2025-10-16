@@ -44,7 +44,6 @@ namespace GabaritAI.Pages
             }
         }
 
-        [HttpPost]
         public async Task<IActionResult> OnPostMessageAsync([FromBody] MessageRequest request)
         {
             if (string.IsNullOrWhiteSpace(request?.Message))

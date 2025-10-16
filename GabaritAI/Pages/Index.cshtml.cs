@@ -1,59 +1,52 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using GabaritAI.Helpers;
 using GabaritAI.Services;
-
+using GabaritAI.Helpers; 
 namespace GabaritAI.Pages
 {
     public class IndexModel : PageModel
     {
         private readonly IOpenAIService _openAIService;
+        private readonly IChatMemoryService _memoryService;
 
         [BindProperty]
         public string? UserMessage { get; set; }
 
         public List<string> Messages { get; set; } = new();
 
-        public IndexModel(IOpenAIService openAIService)
+        public IndexModel(IOpenAIService openAIService, IChatMemoryService memoryService)
         {
             _openAIService = openAIService;
+            _memoryService = memoryService;
         }
 
         public void OnGet()
         {
-            Messages = HttpContext.Session.GetObject<List<string>>("ChatMessages") ?? new List<string>();
+            Messages = _memoryService.GetHistory(HttpContext);
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
-            Messages = HttpContext.Session.GetObject<List<string>>("ChatMessages") ?? new List<string>();
-
             if (!string.IsNullOrWhiteSpace(UserMessage))
             {
-                // Adiciona mensagem do usuário
-                Messages.Add($"Você: {UserMessage}");
+                _memoryService.AddUserMessage(HttpContext, UserMessage);
+                Messages = _memoryService.GetHistory(HttpContext);
+                Messages.Add("💬 IA está digitando...");
+                HttpContext.Session.SetObject("ChatHistory", Messages);
 
-                // Adiciona indicador "IA está digitando..."
-                Messages.Add("⏳ IA está digitando...");
-
-                HttpContext.Session.SetObject("ChatMessages", Messages);
-
-                // Gera a resposta da IA
-                string responseText;
+                string iaResponse;
                 try
                 {
-                    responseText = await _openAIService.GetResponseAsync(UserMessage);
+                    var contextText = _memoryService.GetContextText(HttpContext, 6);
+                    iaResponse = await _openAIService.GetResponseAsync(contextText);
                 }
                 catch (Exception ex)
                 {
-                    responseText = $"⚠️ Erro ao conectar com a IA: {ex.Message}";
+                    iaResponse = $"⚠️ Erro ao conectar com a IA: {ex.Message}";
                 }
 
-                // Remove o indicador de digitação
-                Messages.Remove("⏳ IA está digitando...");
-                Messages.Add($"🤖 {responseText}");
-
-                HttpContext.Session.SetObject("ChatMessages", Messages);
+                Messages.Remove("💬 IA está digitando...");
+                _memoryService.AddAIMessage(HttpContext, iaResponse);
             }
 
             return RedirectToPage();

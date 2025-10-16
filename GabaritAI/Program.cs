@@ -1,25 +1,27 @@
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using GabaritAI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Adiciona serviços ao container
-builder.Services.AddRazorPages();
-builder.Services.AddSession();
-
-// Registra o serviço da OpenAI
-builder.Services.AddSingleton<IOpenAIService>(sp =>
+// Configura sessões
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
 {
-    var httpClient = new HttpClient();
-    var apiKey = Environment.GetEnvironmentVariable("API_KEY") ?? "SUA_CHAVE_AQUI";
-    return new OpenAIService(httpClient, apiKey);
+    options.IdleTimeout = TimeSpan.FromMinutes(60);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
 });
+
+// Adiciona Razor Pages
+builder.Services.AddRazorPages();
+
+// Registra o serviço OpenAI
+builder.Services.AddSingleton<IOpenAIService, OpenAIService>();
+
+// Registra o serviço de memoria da conversa
+builder.Services.AddSingleton<IChatMemoryService, ChatMemoryService>();
 
 var app = builder.Build();
 
-// Configuração do pipeline HTTP
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
@@ -29,7 +31,6 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
-app.UseAuthorization();
 app.UseSession();
 app.MapRazorPages();
 

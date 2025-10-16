@@ -1,6 +1,7 @@
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace GabaritAI.Services
 {
@@ -19,8 +20,11 @@ namespace GabaritAI.Services
         {
             var requestBody = new
             {
-                model = "gpt-4",
-                prompt = prompt,
+                model = "gpt-3.5-turbo",
+                messages = new[]
+                {
+                    new { role = "user", content = prompt }
+                },
                 max_tokens = 200
             };
 
@@ -30,14 +34,25 @@ namespace GabaritAI.Services
                 "application/json"
             );
 
+            // Limpa headers antigos e adiciona Authorization
             _httpClient.DefaultRequestHeaders.Clear();
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
 
-            var response = await _httpClient.PostAsync("https://api.openai.com/v1/completions", requestContent);
-            response.EnsureSuccessStatusCode();
+            // Chamada para o endpoint correto de chat
+            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", requestContent);
 
+            response.EnsureSuccessStatusCode(); // lança exception se status != 2xx
+
+            // Lê JSON e extrai apenas o texto da resposta
             var json = await response.Content.ReadAsStringAsync();
-            return json;
+            using var doc = JsonDocument.Parse(json);
+            var text = doc.RootElement
+                          .GetProperty("choices")[0]
+                          .GetProperty("message")
+                          .GetProperty("content")
+                          .GetString();
+            
+            return text.Trim();
         }
     }
 }

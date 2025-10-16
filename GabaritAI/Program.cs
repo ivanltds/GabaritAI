@@ -8,11 +8,18 @@ builder.Services.AddRazorPages();
 builder.Services.AddSingleton<IOpenAIService>(sp =>
 {
     var httpClient = new HttpClient();
-    var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? "COLE_SUA_API_KEY_AQUI";
+    var apiKey = Environment.GetEnvironmentVariable("API_KEY_AQUI") ?? "chave de acesso aqui";
     return new OpenAIService(httpClient, apiKey);
 });
 
+//Sessão para ter memoria 
+
+builder.Services.AddRazorPages();
+builder.Services.AddSession(); // ⬅️ habilita sessão
+
+
 var app = builder.Build();
+
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -21,13 +28,24 @@ if (!app.Environment.IsDevelopment())
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
+app.UseRouting();
+
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapControllerRoute(
+        name: "default",
+        pattern: "{controller=Dashboard}/{action=Inicio}/{OpenAITeste?}");
+});
 
 app.UseHttpsRedirection();
+
 app.UseStaticFiles();
 
 app.UseRouting();
 
 app.UseAuthorization();
+
+app.UseSession();// ⬅️ adiciona middleware de sessão
 
 app.MapRazorPages();
 

@@ -1,0 +1,71 @@
+name: Deploy GabaritAI to Somee
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📦 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: 🏗️ Build and publish project
+        run: |
+          dotnet publish ./GabaritAI/GabaritAI.csproj -c Release -o ./publish
+          echo "✅ Build concluído."
+
+      - name: 🧹 Corrigir web.config e adicionar API_KEY
+        run: |
+          cat > ./publish/web.config <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <system.webServer>
+              <handlers>
+                <add name="aspNetCore" path="*" verb="*" modules="AspNetCoreModuleV2" resourceType="Unspecified" />
+              </handlers>
+              <aspNetCore processPath="dotnet" arguments="GabaritAI.dll" stdoutLogEnabled="true" stdoutLogFile=".\logs\stdout" hostingModel="inprocess">
+                <environmentVariables>
+                  <environmentVariable name="ASPNETCORE_ENVIRONMENT" value="Production" />
+                  <environmentVariable name="API_KEY" value="${{ secrets.OPENAI_KEY }}" />
+                </environmentVariables>
+              </aspNetCore>
+              <defaultDocument>
+                <files>
+                  <clear />
+                  <add value="index.cshtml" />
+                  <add value="index.html" />
+                </files>
+              </defaultDocument>
+              <staticContent>
+                <mimeMap fileExtension=".json" mimeType="application/json" />
+              </staticContent>
+            </system.webServer>
+          </configuration>
+          EOF
+
+      - name: 🌐 Instalar cliente FTP
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: 🚀 Deploy via FTP para Somee
+        env:
+          FTP_HOST: ftp://GabaritAI.somee.com
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+          FTP_PATH: /www.GabaritAI.somee.com
+        run: |
+          lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" <<EOF
+          set ftp:ssl-allow true
+          set ftp:use-site-chmod false
+          set xfer:clobber on
+          mirror -R ./publish "$FTP_PATH" --parallel=5 --ignore-time --verbose --no-perms --overwrite
+          bye
+          EOF

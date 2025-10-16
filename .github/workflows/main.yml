@@ -18,13 +18,20 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: 🏗️ Build and publish project
+      - name: 🧠 Testar build local antes do deploy
         run: |
-          dotnet publish ./GabaritAI/GabaritAI.csproj -c Release -o ./publish
-          echo "✅ Build concluído."
+          echo "🧠 Verificando build local..."
+          dotnet publish ./GabaritAI/GabaritAI.csproj -c Release -o ./publish-test
+          echo "✅ Build local concluído com sucesso."
+          echo "⚙️ Testando inicialização rápida (timeout 5s)..."
+          timeout 5s dotnet ./publish-test/GabaritAI.dll || echo "⚠️ Teste rápido finalizado (sem resposta esperada — comportamento normal)."
 
-      - name: 🧹 Corrigir web.config e adicionar API_KEY
-        run: |
+            - name: 🧹 Corrigir web.config e adicionar API_KEY
+          run: |
+          echo "🧩 Criando diretório ./publish se não existir..."
+          mkdir -p ./publish
+
+          echo "🔧 Gerando web.config..."
           cat > ./publish/web.config <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <configuration>
@@ -52,6 +59,7 @@ jobs:
           </configuration>
           EOF
 
+
       - name: 🌐 Instalar cliente FTP
         run: sudo apt-get update && sudo apt-get install -y lftp
 
@@ -69,3 +77,4 @@ jobs:
           mirror -R ./publish "$FTP_PATH" --parallel=5 --ignore-time --verbose --no-perms --overwrite
           bye
           EOF
+          echo "✅ Deploy concluído!

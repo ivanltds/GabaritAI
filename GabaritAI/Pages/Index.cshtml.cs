@@ -21,7 +21,27 @@ namespace GabaritAI.Pages
 
         public void OnGet()
         {
+             // Carrega histórico anterior
             Messages = _memoryService.GetHistory(HttpContext);
+
+            // Se for a primeira visita, adiciona a saudação inicial da IA
+            if (Messages.Count == 0)
+            {
+                var hora = DateTime.Now.Hour;
+                var saudacao = hora switch
+                {
+                    >= 5 and < 12 => "Bom dia ☀️",
+                    >= 12 and < 18 => "Boa tarde 🌤️",
+                    _ => "Boa noite 🌙"
+                };
+
+                var mensagemInicial = $"{saudacao}, eu sou o GabaritAI 🤖. " +
+                                      "Sou seu assistente de estudos com IA — pronto para te ajudar a revisar, aprender e resolver dúvidas. " +
+                                      "Envie uma pergunta para começar 🚀";
+
+                _memoryService.AddAIMessage(HttpContext, mensagemInicial);
+                Messages = _memoryService.GetHistory(HttpContext);
+            }
         }
 
         [HttpPost]

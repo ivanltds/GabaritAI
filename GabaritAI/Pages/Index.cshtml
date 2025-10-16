@@ -1,10 +1,37 @@
 ﻿@page
-@model IndexModel
+@model GabaritAI.Pages.IndexModel
 @{
-    ViewData["Title"] = "Home page";
+    ViewData["Title"] = "GabaritAI Chat";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="container mt-5">
+    <h2 class="text-center mb-4">💬 GabaritAI Chat</h2>
+
+    <form method="post" class="mb-3">
+        <div class="input-group">
+            <input asp-for="UserMessage" class="form-control" placeholder="Digite sua mensagem..." />
+            <button type="submit" class="btn btn-primary">Enviar</button>
+        </div>
+    </form>
+
+    <div class="chat-box border p-3 rounded" style="background-color:#f8f9fa; max-height:400px; overflow-y:auto;">
+        @if (Model.Messages != null && Model.Messages.Count > 0)
+        {
+            foreach (var msg in Model.Messages)
+            {
+                if (msg.StartsWith("Você:"))
+                {
+                    <div class="text-end text-white bg-primary p-2 rounded mb-2">@msg</div>
+                }
+                else
+                {
+                    <div class="text-start bg-light p-2 rounded mb-2">@msg</div>
+                }
+            }
+        }
+        else
+        {
+            <p class="text-muted">Envie uma mensagem para começar a conversa.</p>
+        }
+    </div>
 </div>

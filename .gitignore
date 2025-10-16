@@ -23,6 +23,8 @@ bld/
 [Ll]og/
 [Ll]ogs/
 ds 
+config.bat
+publish
 
 #CSS
 wwwroot/

@@ -32,11 +32,58 @@
         }
     </div>
 
-    <form method="post" class="chat-input">
-        <input asp-for="UserMessage" class="input-field" placeholder="Digite sua mensagem..." autocomplete="off" />
+    <form onsubmit="return sendMessage(event)" class="chat-input">
+        <input id="userMessage" class="input-field" placeholder="Digite sua mensagem..." autocomplete="off" />
         <button type="submit" class="send-button">Enviar</button>
     </form>
 </div>
+
+@section Scripts {
+<script>
+async function sendMessage(event) {
+    event.preventDefault();
+    const input = document.getElementById("userMessage");
+    const chatBox = document.getElementById("chatBox");
+    const message = input.value.trim();
+    if (!message) return;
+
+    // Adiciona a mensagem do usuário instantaneamente
+    const userDiv = document.createElement("div");
+    userDiv.className = "message user";
+    userDiv.textContent = "Você: " + message;
+    chatBox.appendChild(userDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    // Placeholder "IA está digitando..."
+    const typingDiv = document.createElement("div");
+    typingDiv.className = "message typing";
+    typingDiv.textContent = "⏳ GabaritAI está digitando...";
+    chatBox.appendChild(typingDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    input.value = "";
+
+    try {
+        const response = await fetch("?handler=Message", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message })
+        });
+
+        const data = await response.json();
+
+        // Substitui placeholder pela resposta real da IA
+        typingDiv.className = "message ai";
+        typingDiv.textContent = data.response.startsWith("🤖") ? data.response : "🤖 " + data.response;
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+    } catch (error) {
+        typingDiv.className = "message ai";
+        typingDiv.textContent = "⚠️ Erro ao conectar com a IA.";
+    }
+}
+</script>
+}
 
 <style>
     body {

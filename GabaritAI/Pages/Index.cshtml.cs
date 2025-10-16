@@ -1,18 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using GabaritAI.Services;
-using GabaritAI.Helpers; 
+using GabaritAI.Helpers;
+
 namespace GabaritAI.Pages
 {
+    [IgnoreAntiforgeryToken] // Necessário para chamadas fetch
     public class IndexModel : PageModel
     {
         private readonly IOpenAIService _openAIService;
         private readonly IChatMemoryService _memoryService;
-
-        [BindProperty]
-        public string? UserMessage { get; set; }
-
-        public List<string> Messages { get; set; } = new();
 
         public IndexModel(IOpenAIService openAIService, IChatMemoryService memoryService)
         {
@@ -20,36 +17,45 @@ namespace GabaritAI.Pages
             _memoryService = memoryService;
         }
 
+        public List<string> Messages { get; set; } = new();
+
         public void OnGet()
         {
             Messages = _memoryService.GetHistory(HttpContext);
         }
 
-        public async Task<IActionResult> OnPostAsync()
+        [HttpPost]
+        public async Task<IActionResult> OnPostMessageAsync([FromBody] MessageRequest request)
         {
-            if (!string.IsNullOrWhiteSpace(UserMessage))
+            if (string.IsNullOrWhiteSpace(request?.Message))
+                return BadRequest(new { error = "Mensagem vazia" });
+
+            // Adiciona mensagem do usuário
+            _memoryService.AddUserMessage(HttpContext, request.Message);
+
+            // Cria contexto (últimas mensagens)
+            var context = _memoryService.GetContextText(HttpContext, 6);
+
+            // Faz a chamada à IA
+            string iaResponse;
+            try
             {
-                _memoryService.AddUserMessage(HttpContext, UserMessage);
-                Messages = _memoryService.GetHistory(HttpContext);
-                Messages.Add("💬 IA está digitando...");
-                HttpContext.Session.SetObject("ChatHistory", Messages);
-
-                string iaResponse;
-                try
-                {
-                    var contextText = _memoryService.GetContextText(HttpContext, 6);
-                    iaResponse = await _openAIService.GetResponseAsync(contextText);
-                }
-                catch (Exception ex)
-                {
-                    iaResponse = $"⚠️ Erro ao conectar com a IA: {ex.Message}";
-                }
-
-                Messages.Remove("💬 IA está digitando...");
-                _memoryService.AddAIMessage(HttpContext, iaResponse);
+                iaResponse = await _openAIService.GetResponseAsync(context);
+            }
+            catch (Exception ex)
+            {
+                iaResponse = $"⚠️ Erro ao conectar com a IA: {ex.Message}";
             }
 
-            return RedirectToPage();
+            // Salva resposta
+            _memoryService.AddAIMessage(HttpContext, iaResponse);
+
+            return new JsonResult(new { response = iaResponse });
+        }
+
+        public class MessageRequest
+        {
+            public string Message { get; set; } = string.Empty;
         }
     }
 }

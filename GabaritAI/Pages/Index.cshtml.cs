@@ -30,17 +30,28 @@ namespace GabaritAI.Pages
 
             if (!string.IsNullOrWhiteSpace(UserMessage))
             {
+                // Adiciona mensagem do usuário
                 Messages.Add($"Você: {UserMessage}");
 
+                // Adiciona indicador "IA está digitando..."
+                Messages.Add("⏳ IA está digitando...");
+
+                HttpContext.Session.SetObject("ChatMessages", Messages);
+
+                // Gera a resposta da IA
+                string responseText;
                 try
                 {
-                    var response = await _openAIService.GetResponseAsync(UserMessage);
-                    Messages.Add($"🤖 IA: {response}");
+                    responseText = await _openAIService.GetResponseAsync(UserMessage);
                 }
                 catch (Exception ex)
                 {
-                    Messages.Add($"⚠️ Erro ao conectar com a IA: {ex.Message}");
+                    responseText = $"⚠️ Erro ao conectar com a IA: {ex.Message}";
                 }
+
+                // Remove o indicador de digitação
+                Messages.Remove("⏳ IA está digitando...");
+                Messages.Add($"🤖 {responseText}");
 
                 HttpContext.Session.SetObject("ChatMessages", Messages);
             }

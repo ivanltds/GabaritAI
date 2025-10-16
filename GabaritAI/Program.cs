@@ -14,11 +14,14 @@ builder.Services.AddSession(options =>
 // Adiciona Razor Pages
 builder.Services.AddRazorPages();
 
-// Registra o serviço OpenAI
-builder.Services.AddSingleton<IOpenAIService, OpenAIService>();
-
 // Registra o serviço de memoria da conversa
 builder.Services.AddSingleton<IChatMemoryService, ChatMemoryService>();
+
+// Registra o serviço de RAG
+builder.Services.AddSingleton<IRagService, RagService>();
+
+// ✅ Corrigido: Registra o serviço OpenAI com HttpClient (sem alterar mais nada)
+builder.Services.AddHttpClient<IOpenAIService, OpenAIService>();
 
 var app = builder.Build();
 

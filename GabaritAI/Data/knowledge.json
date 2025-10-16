@@ -1,0 +1,14 @@
+[
+  {
+    "topic": "azure devops",
+    "context": "O Azure DevOps é uma plataforma da Microsoft que fornece pipelines, boards, repositórios e testes automatizados."
+  },
+  {
+    "topic": "power bi",
+    "context": "O Power BI é uma ferramenta de visualização de dados que permite criar dashboards interativos e relatórios dinâmicos."
+  },
+  {
+    "topic": "scrum",
+    "context": "O Scrum é um framework ágil usado para gerenciar o desenvolvimento de produtos complexos, com papéis como Product Owner, Scrum Master e Time de Desenvolvimento."
+  }
+]

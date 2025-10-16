@@ -7,53 +7,62 @@ namespace GabaritAI.Services
 {
     public class OpenAIService : IOpenAIService
     {
-        private readonly IConfiguration _config;
         private readonly HttpClient _httpClient;
+        private readonly string _apiKey;
+        private readonly IRagService _ragService;
+        private readonly IChatMemoryService _memoryService;
 
-        public OpenAIService(IConfiguration config)
+        public OpenAIService(HttpClient httpClient, IConfiguration config, IRagService ragService, IChatMemoryService memoryService)
         {
-            _config = config;
-            _httpClient = new HttpClient();
+            _httpClient = httpClient;
+            _ragService = ragService;
+            _memoryService = memoryService;
+
+            _apiKey = config["API_KEY"]
+                      ?? Environment.GetEnvironmentVariable("API_KEY")
+                      ?? throw new Exception("❌ API_KEY não configurada!");
+
+            // Configuração dos headers HTTP
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", "GabaritAI/1.0");
         }
 
-        public async Task<string> GetResponseAsync(string fullContext)
+        public async Task<string> GetResponseAsync(string prompt)
         {
-            var apiKey = _config["API_KEY"];
-            if (string.IsNullOrEmpty(apiKey))
-                throw new Exception("⚠️ API_KEY não configurada. Adicione no ambiente.");
+            // 🧠 Integra o RAG ao prompt
+            var promptComConhecimento = await _ragService.GetRelevantContextAsync(prompt);
 
             var requestBody = new
             {
                 model = "gpt-4o-mini",
                 messages = new[]
                 {
-                    new { role = "system", content = "Você é um assistente útil e direto chamado GabaritAI." },
-                    new { role = "user", content = fullContext }
+                    new { role = "system", content = "Você é um assistente educacional gentil, que ajuda adolescentes a aprenderem com explicações claras e motivadoras. Nunca incentiva cola, e sempre explica o raciocínio por trás das respostas." },
+                    new { role = "user", content = promptComConhecimento }
                 },
-                temperature = 0.7
+                temperature = 0.7,
+                max_tokens = 400
             };
 
-            var json = JsonSerializer.Serialize(requestBody);
-            using var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            _httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", apiKey);
-
+            var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
             var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content);
 
             if (!response.IsSuccessStatusCode)
             {
-                var errorText = await response.Content.ReadAsStringAsync();
-                throw new Exception($"Erro na requisição OpenAI: {errorText}");
+                var error = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ Erro da API: {error}");
+                return "⚠️ Erro ao conectar com a IA.";
             }
 
-            var responseString = await response.Content.ReadAsStringAsync();
-            using var doc = JsonDocument.Parse(responseString);
-            return doc.RootElement
+            var jsonResponse = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(jsonResponse);
+            var message = doc.RootElement
                 .GetProperty("choices")[0]
                 .GetProperty("message")
                 .GetProperty("content")
-                .GetString() ?? "(sem resposta)";
+                .GetString();
+
+            return message ?? "⚠️ Resposta vazia da IA.";
         }
     }
 }

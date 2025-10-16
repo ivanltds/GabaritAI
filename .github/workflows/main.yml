@@ -4,20 +4,16 @@ on:
   push:
     branches:
       - main
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: 📦 Checkout repository
         uses: actions/checkout@v4
-
       - name: ⚙️ Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-
       - name: 🧠 Testar build local antes do deploy
         run: |
           echo "🧠 Verificando build local..."
@@ -25,12 +21,10 @@ jobs:
           echo "✅ Build local concluído com sucesso."
           echo "⚙️ Testando inicialização rápida (timeout 5s)..."
           timeout 5s dotnet ./publish-test/GabaritAI.dll || echo "⚠️ Teste rápido finalizado (sem resposta esperada — comportamento normal)."
-
-            - name: 🧹 Corrigir web.config e adicionar API_KEY
-          run: |
+      - name: 🧹 Corrigir web.config e adicionar API_KEY
+        run: |
           echo "🧩 Criando diretório ./publish se não existir..."
           mkdir -p ./publish
-
           echo "🔧 Gerando web.config..."
           cat > ./publish/web.config <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
@@ -58,11 +52,8 @@ jobs:
             </system.webServer>
           </configuration>
           EOF
-
-
       - name: 🌐 Instalar cliente FTP
         run: sudo apt-get update && sudo apt-get install -y lftp
-
       - name: 🚀 Deploy via FTP para Somee
         env:
           FTP_HOST: ftp://GabaritAI.somee.com
@@ -70,11 +61,15 @@ jobs:
           FTP_PASS: ${{ secrets.FTP_PASS }}
           FTP_PATH: /www.GabaritAI.somee.com
         run: |
-          lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" <<EOF
+          echo "📡 Conectando e enviando via FTP..."
+          lftp -u "${FTP_USER},${FTP_PASS}" "${FTP_HOST}" <<'EOF'
           set ftp:ssl-allow true
           set ftp:use-site-chmod false
+          set ftp:use-mdtm off
+          set ftp:use-allo off
           set xfer:clobber on
-          mirror -R ./publish "$FTP_PATH" --parallel=5 --ignore-time --verbose --no-perms --overwrite
+          mirror -R ./publish ${FTP_PATH} --parallel=5 --verbose --ignore-time --no-perms --overwrite
           bye
           EOF
           echo "✅ Deploy concluído!
+
